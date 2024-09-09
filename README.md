@@ -1,3 +1,11 @@
-# СПП лабы
+# СПП лаба 1
 
-## Каждая лаба находится в своей ветке (lab1, lab2, ...)
+## Development
+
+```bash
+# Install dependencies
+1. npm i
+
+# Start application
+2. node app.js
+```
