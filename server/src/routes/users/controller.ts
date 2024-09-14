@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import usersService from '../../services/users';
+import authService from '../../services/auth';
 import mediaService from '../../services/media';
 import { NewUser } from '../../drizzle/models';
 import { GetUsersQuery, PatchUserBody } from '../../types/users';
@@ -21,7 +22,7 @@ class UsersController {
       return res.status(409).json({ error: 'User already exists' });
     }
 
-    const hashedPassword = await usersService.hashPassword(password);
+    const hashedPassword = await authService.hashPassword(password);
 
     const createdUser = await usersService.createUsers({
       fullName,
@@ -50,6 +51,11 @@ class UsersController {
 
   async editUser(req: Request<{ id: string }, unknown, PatchUserBody>, res: Response) {
     const { id } = req.params;
+
+    const user = await usersService.getUserById(id);
+    if (!user) {
+      return res.status(404).json({ error: 'User doest not exist' });
+    }
 
     const updatedUser = await usersService.editUser(id, req.body);
 
