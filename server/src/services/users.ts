@@ -1,5 +1,4 @@
 import { eq } from 'drizzle-orm';
-import bcrypt from 'bcrypt';
 import { db } from '../drizzle';
 import { User } from '../drizzle/models';
 import * as models from '../drizzle/models';
@@ -65,10 +64,6 @@ class UsersService {
         admin: models.users.admin,
       });
     return usersRecords[0];
-  }
-
-  async hashPassword(password: string): Promise<string> {
-    return await bcrypt.hash(password, 10);
   }
 }
 

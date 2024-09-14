@@ -1,7 +1,8 @@
 export enum APP_ROUTES {
-  NOT_FOUND = "*",
-  BASE = "/",
-  USERS = "/users",
+  NOT_FOUND = '*',
+  BASE = '/',
+  USERS = '/users',
+  LOGIN = '/login',
 }
 
 export interface Route {
