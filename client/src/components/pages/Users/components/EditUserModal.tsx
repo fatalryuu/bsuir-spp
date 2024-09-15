@@ -8,67 +8,31 @@ import {
   FormControlLabel,
   TextField,
 } from '@mui/material';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
 import { SubmitHandler, useFormContext } from 'react-hook-form';
-import { editUser } from '../../../../api/users';
+import { socket } from '../../../../App';
+import { WS_MESSAGES } from '../../../../types/ws';
 import { EditUserSchema } from './edit-user.schema';
 
 interface EditUserModalProps {
   open: boolean;
   closeModal: () => void;
-  openErrorSnackbar: () => void;
   editingId: string;
 }
 
-const EditUserModal: React.FC<EditUserModalProps> = ({
-  open,
-  closeModal,
-  openErrorSnackbar,
-  editingId,
-}) => {
-  const queryClient = useQueryClient();
+const EditUserModal: React.FC<EditUserModalProps> = ({ open, closeModal, editingId }) => {
   const {
     register,
     handleSubmit,
     formState: { errors },
-    reset,
     watch,
   } = useFormContext<EditUserSchema>();
 
-  const [isLoading, setIsLoading] = useState(false);
-
-  const { mutate, isPending, isSuccess, isError } = useMutation({
-    mutationFn: editUser,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-    },
-  });
-
-  useEffect(() => {
-    if (isSuccess) {
-      reset();
-      closeModal();
-    } else if (isError) {
-      openErrorSnackbar();
-    }
-  }, [isPending]);
-
-  const handleClose = () => {
-    if (!isLoading) {
-      reset();
-      closeModal();
-    }
-  };
-
   const onSubmit: SubmitHandler<EditUserSchema> = async (data) => {
-    mutate({ id: editingId, ...data });
-
-    setIsLoading(false);
+    socket.emit(WS_MESSAGES.EDIT_USER, { id: editingId!, ...data });
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} fullWidth>
+    <Dialog open={open} onClose={closeModal} fullWidth>
       <DialogTitle>Edit User</DialogTitle>
       <DialogContent>
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -97,10 +61,10 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
             label="Admin"
           />
           <DialogActions sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', px: 0 }}>
-            <Button onClick={handleClose} color="error" variant="outlined" disabled={isLoading}>
+            <Button onClick={closeModal} color="error" variant="outlined">
               Cancel
             </Button>
-            <Button type="submit" color="primary" variant="contained" disabled={isLoading}>
+            <Button type="submit" color="primary" variant="contained">
               Save
             </Button>
           </DialogActions>

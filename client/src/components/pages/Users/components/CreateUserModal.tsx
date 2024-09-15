@@ -11,26 +11,27 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { SubmitHandler, useForm } from 'react-hook-form';
-import { upload } from '../../../../api/media';
-import { createUser } from '../../../../api/users';
+import { socket } from '../../../../App';
+import { WS_MESSAGES } from '../../../../types/ws';
 import PasswordInput from '../../../common/PasswordInput';
 import { CreateUserSchema, schema } from './create-user.schema';
+import { UsersFilters } from '../../../../types/users';
 
 interface CreateUserModalProps {
   open: boolean;
   closeModal: () => void;
   openErrorSnackbar: () => void;
+  filters: UsersFilters;
 }
 
 const CreateUserModal: React.FC<CreateUserModalProps> = ({
   open,
   closeModal,
   openErrorSnackbar,
+  filters,
 }) => {
-  const queryClient = useQueryClient();
   const {
     register,
     handleSubmit,
@@ -41,40 +42,48 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({
     resolver: zodResolver(schema),
   });
 
-  const [isLoading, setIsLoading] = useState(false);
-
-  const { mutate, isPending, isSuccess, isError } = useMutation({
-    mutationFn: createUser,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-    },
-  });
-
   useEffect(() => {
-    if (isSuccess) {
+    socket.on(WS_MESSAGES.CREATE_USER_ERROR, () => {
+      openErrorSnackbar();
+    });
+
+    socket.on(WS_MESSAGES.CREATE_USER_SUCCESS, () => {
       reset();
       closeModal();
-    } else if (isError) {
-      openErrorSnackbar();
-    }
-  }, [isPending]);
+      socket.emit(WS_MESSAGES.GET_USERS, filters.admin);
+    });
+
+    return () => {
+      socket.off(WS_MESSAGES.CREATE_USER_ERROR);
+      socket.off(WS_MESSAGES.CREATE_USER_SUCCESS);
+    };
+  }, []);
 
   const handleClose = () => {
-    if (!isLoading) {
-      reset();
-      closeModal();
-    }
+    reset();
+    closeModal();
   };
 
   const onSubmit: SubmitHandler<CreateUserSchema> = async (data) => {
     const { avatar: files, ...user } = data;
 
     const avatarFile = files[0];
-    setIsLoading(true);
-    const { url: avatarUrl } = await upload(avatarFile);
 
-    mutate({ ...user, avatarUrl });
-    setIsLoading(false);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const fileBuffer = reader.result;
+
+      socket.emit(WS_MESSAGES.UPLOAD, {
+        fileName: avatarFile.name,
+        fileBuffer,
+        fileType: avatarFile.type,
+      });
+    };
+    reader.readAsArrayBuffer(avatarFile);
+
+    socket.on(WS_MESSAGES.UPLOAD_SUCCESS, (avatarUrl: string) => {
+      socket.emit(WS_MESSAGES.CREATE_USER, { ...user, avatarUrl });
+    });
   };
 
   return (
@@ -115,7 +124,6 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({
                   variant="outlined"
                   component="label"
                   color={errors.avatar ? 'error' : 'primary'}
-                  disabled={isLoading}
                 >
                   Upload Profile Picture
                   <input type="file" accept="image/*" hidden {...register('avatar')} />
@@ -142,10 +150,10 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({
             />
           </Box>
           <DialogActions sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', px: 0 }}>
-            <Button onClick={handleClose} color="error" variant="outlined" disabled={isLoading}>
+            <Button onClick={handleClose} color="error" variant="outlined">
               Cancel
             </Button>
-            <Button type="submit" color="primary" variant="contained" disabled={isLoading}>
+            <Button type="submit" color="primary" variant="contained">
               Create
             </Button>
           </DialogActions>

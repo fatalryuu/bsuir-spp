@@ -13,7 +13,7 @@ class AuthService {
 
   generateAccessToken(payload: AccessTokenPayload): string {
     return jwt.sign(payload, process.env.ACCESS_TOKEN_SECRET as string, {
-      expiresIn: '30m',
+      expiresIn: '1m',
     });
   }
 

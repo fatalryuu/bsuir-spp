@@ -12,11 +12,11 @@ import {
   TableRow,
   Typography,
 } from '@mui/material';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import React, { useState } from 'react';
-import { deleteUser } from '../../../../api/users';
 import { User } from '../../../../types/users';
 import ConfirmModal from '../../../common/ConfirmModal';
+import { socket } from '../../../../App';
+import { WS_MESSAGES } from '../../../../types/ws';
 
 interface UsersTableProps {
   users: User[];
@@ -24,16 +24,8 @@ interface UsersTableProps {
 }
 
 const UsersTable: React.FC<UsersTableProps> = ({ users, handleEditClick }) => {
-  const queryClient = useQueryClient();
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  const { mutate, isPending: isDeletePending } = useMutation({
-    mutationFn: deleteUser,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-    },
-  });
 
   const handleDelete = (id: string) => {
     setSelectedId(id);
@@ -105,9 +97,8 @@ const UsersTable: React.FC<UsersTableProps> = ({ users, handleEditClick }) => {
       <ConfirmModal
         open={isConfirmModalOpen}
         text="Are you sure you want to delete this user?"
-        handleClose={() => !isDeletePending && setIsConfirmModalOpen(false)}
-        handleSubmit={() => mutate(selectedId!)}
-        isLoading={isDeletePending}
+        handleClose={() => setIsConfirmModalOpen(false)}
+        handleSubmit={() => socket.emit(WS_MESSAGES.DELETE_USER, selectedId!)}
       />
     </>
   );

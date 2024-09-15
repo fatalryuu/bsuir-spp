@@ -1,12 +1,15 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Paper, TextField, Link as MUILink, Typography } from '@mui/material';
-import { useMutation } from '@tanstack/react-query';
+import { Button, Link as MUILink, Paper, TextField, Typography } from '@mui/material';
 import { SubmitHandler, useForm } from 'react-hook-form';
-import { login } from '../../../api/auth';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { socket } from '../../../App';
+import { APP_ROUTES } from '../../../types/router';
+import { WS_MESSAGES } from '../../../types/ws';
 import PasswordInput from '../../common/PasswordInput';
 import { LoginSchema, schema } from './login.schema';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
-import { APP_ROUTES } from '../../../types/router';
+import { useEffect, useState } from 'react';
+import { setCookie } from '../../../helpers/cookies';
+import { jwtDecode } from 'jwt-decode';
 
 const LoginPage: React.FC = () => {
   const {
@@ -18,15 +21,38 @@ const LoginPage: React.FC = () => {
   });
   const navigate = useNavigate();
 
-  const { mutate, isPending, isError } = useMutation({
-    mutationFn: login,
-    onSuccess: () => {
+  const [isPending, setIsPending] = useState(false);
+  const [isError, setIsError] = useState(false);
+
+  useEffect(() => {
+    socket.on(WS_MESSAGES.LOGIN_SUCCESS, async ({ accessToken }) => {
+      setIsPending(false);
+
+      socket.auth = { token: accessToken };
+      const decoded = jwtDecode(accessToken) as { exp: number };
+      const expiresIn = decoded.exp - Math.floor(Date.now() / 1000);
+      setCookie('access_token', accessToken, expiresIn);
+
+      socket.disconnect();
+      socket.connect();
+
       navigate(APP_ROUTES.USERS);
-    },
-  });
+    });
+
+    socket.on(WS_MESSAGES.LOGIN_ERROR, () => {
+      setIsPending(false);
+      setIsError(true);
+    });
+
+    return () => {
+      socket.off(WS_MESSAGES.LOGIN_SUCCESS);
+      socket.off(WS_MESSAGES.LOGIN_ERROR);
+    };
+  }, []);
 
   const onSubmit: SubmitHandler<LoginSchema> = async (data) => {
-    mutate(data);
+    setIsPending(true);
+    socket.emit(WS_MESSAGES.LOGIN, data);
   };
 
   return (

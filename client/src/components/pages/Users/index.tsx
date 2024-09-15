@@ -1,25 +1,25 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Box, Snackbar, SnackbarContent, Typography } from '@mui/material';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
-import { getUsers } from '../../../api/users';
+import { socket } from '../../../App';
 import { User, UsersFilters } from '../../../types/users';
+import { WS_MESSAGES } from '../../../types/ws';
 import CreateUserModal from './components/CreateUserModal';
 import EditUserModal from './components/EditUserModal';
 import UsersHeader from './components/UsersHeader';
 import UsersTable from './components/UsersTable';
-import { schema } from './components/edit-user.schema';
-import { EditUserSchema } from './components/edit-user.schema';
+import { EditUserSchema, schema } from './components/edit-user.schema';
+import { useNavigate } from 'react-router-dom';
+import { APP_ROUTES } from '../../../types/router';
+import { deleteCookie } from '../../../helpers/cookies';
+import { useAuth } from '../../../hooks/useAuth';
 
 const UsersPage: React.FC = () => {
+  const navigate = useNavigate();
   const [filters, setFilters] = useState<UsersFilters>({});
-  const { data, isLoading: areUsersLoading } = useQuery({
-    queryKey: ['users', filters],
-    queryFn: () => getUsers({ filters }),
-    placeholderData: keepPreviousData,
-  });
-
+  const [users, setUsers] = useState<User[]>([]);
+  const [areUsersLoading, setAreUsersLoading] = useState<boolean>(true);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSnackbarOpen, setIsSnackbarOpen] = useState<boolean>(false);
@@ -27,6 +27,56 @@ const UsersPage: React.FC = () => {
   const editMethods = useForm<EditUserSchema>({
     resolver: zodResolver(schema),
   });
+
+  useAuth();
+
+  useEffect(() => {
+    socket.on(WS_MESSAGES.CONNECT_ERROR, () => {
+      deleteCookie('access_token');
+      navigate(APP_ROUTES.LOGIN);
+    });
+
+    socket.on(WS_MESSAGES.TOKEN_ERROR, () => {
+      deleteCookie('access_token');
+      navigate(APP_ROUTES.LOGIN);
+    });
+
+    socket.on(WS_MESSAGES.DELETE_USER_SUCCESS, () => {
+      setAreUsersLoading(true);
+      socket.emit(WS_MESSAGES.GET_USERS, filters.admin);
+    });
+
+    socket.on(WS_MESSAGES.EDIT_USER_SUCCESS, () => {
+      setAreUsersLoading(true);
+      setIsModalOpen(false);
+      socket.emit(WS_MESSAGES.GET_USERS, filters.admin);
+    });
+
+    socket.on(WS_MESSAGES.EDIT_USER_ERROR, () => {
+      setIsSnackbarOpen(true);
+    });
+
+    return () => {
+      socket.off(WS_MESSAGES.CONNECT_ERROR);
+      socket.off(WS_MESSAGES.TOKEN_ERROR);
+      socket.off(WS_MESSAGES.DELETE_USER_SUCCESS);
+      socket.off(WS_MESSAGES.EDIT_USER_SUCCESS);
+      socket.off(WS_MESSAGES.EDIT_USER_ERROR);
+    };
+  }, []);
+
+  useEffect(() => {
+    socket.emit(WS_MESSAGES.GET_USERS, filters.admin);
+
+    socket.on(WS_MESSAGES.GET_USERS, async (users) => {
+      setUsers(users);
+      setAreUsersLoading(false);
+    });
+
+    return () => {
+      socket.off(WS_MESSAGES.GET_USERS);
+    };
+  }, [filters]);
 
   const handleCreateClick = () => {
     setEditingId(null);
@@ -44,20 +94,19 @@ const UsersPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  if (areUsersLoading || !data) return <Typography>Loading...</Typography>;
+  if (areUsersLoading) return <Typography>Loading...</Typography>;
 
   return (
     <Box padding={5}>
       <UsersHeader filters={filters} setFilters={setFilters} openModal={handleCreateClick} />
 
-      <UsersTable users={data.users} handleEditClick={handleEditClick} />
+      <UsersTable users={users} handleEditClick={handleEditClick} />
 
       {editingId ? (
         <FormProvider {...editMethods}>
           <EditUserModal
             open={isModalOpen}
             closeModal={() => setIsModalOpen(false)}
-            openErrorSnackbar={() => setIsSnackbarOpen(true)}
             editingId={editingId}
           />
         </FormProvider>
@@ -66,6 +115,7 @@ const UsersPage: React.FC = () => {
           open={isModalOpen}
           closeModal={() => setIsModalOpen(false)}
           openErrorSnackbar={() => setIsSnackbarOpen(true)}
+          filters={filters}
         />
       )}
 

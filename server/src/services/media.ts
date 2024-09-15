@@ -18,20 +18,20 @@ class MediaService {
     this.storage = getStorage();
   }
 
-  async upload(file: Express.Multer.File): Promise<string> {
-    const ext = file.originalname.split('.').pop();
-    const fileName = generateRandomHash(10) + '.' + ext;
-    const storageRef = ref(this.storage, fileName);
+  async upload(fileName: string, buffer: Buffer, fileType: string): Promise<string> {
+    const ext = fileName.split('.').pop();
+    const generatedFileName = generateRandomHash(10) + '.' + ext;
+    const storageRef = ref(this.storage, generatedFileName);
 
-    const snapshot = await uploadBytesResumable(storageRef, file.buffer, {
-      contentType: file.mimetype,
+    const snapshot = await uploadBytesResumable(storageRef, buffer, {
+      contentType: fileType,
     });
 
     return await getDownloadURL(snapshot.ref);
   }
 
   async deleteByUrl(fileUrl: string): Promise<void> {
-    const baseUrl = 'https://firebasestorage.googleapis.com/v0/b/spp-storage.appspot.com/o/';
+    const baseUrl = `https://firebasestorage.googleapis.com/v0/b/${process.env.FIREBASE_STORAGE_BUCKET}/o/`;
     const filePath = fileUrl.replace(baseUrl, '').split('?')[0];
 
     const storageRef = ref(this.storage, filePath);

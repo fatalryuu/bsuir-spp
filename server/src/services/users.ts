@@ -5,7 +5,7 @@ import * as models from '../drizzle/models';
 import { PatchUserBody } from '../types/users';
 
 class UsersService {
-  async getUsers(admin?: 'true' | 'false'): Promise<Omit<User, 'password'>[]> {
+  async getUsers(admin: boolean | null): Promise<Omit<User, 'password'>[]> {
     let query = db
       .select({
         id: models.users.id,
@@ -17,8 +17,8 @@ class UsersService {
       .from(models.users)
       .$dynamic();
 
-    if (admin) {
-      query = query.where(eq(models.users.admin, admin === 'true'));
+    if (admin !== null) {
+      query = query.where(eq(models.users.admin, admin));
     }
 
     return await query;
@@ -51,7 +51,7 @@ class UsersService {
     await db.delete(models.users).where(eq(models.users.id, id));
   }
 
-  async editUser(id: string, payload: PatchUserBody): Promise<Omit<User, 'password'>> {
+  async editUser(id: string, payload: Omit<PatchUserBody, 'id'>): Promise<Omit<User, 'password'>> {
     const usersRecords = await db
       .update(models.users)
       .set(payload)
