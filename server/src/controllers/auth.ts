@@ -1,8 +1,8 @@
 import { LoginBody } from '../types/auth';
 import usersService from '../services/users';
 import authService from '../services/auth';
-import { io } from '../services/ws';
 import { WS_MESSAGES } from '../types/ws';
+import { io } from '..';
 
 class AuthController {
   async login(body: LoginBody) {

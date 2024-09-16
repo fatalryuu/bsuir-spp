@@ -1,8 +1,7 @@
-import { Request, Response } from 'express';
+import { io } from '..';
 import mediaService from '../services/media';
-import { io } from '../services/ws';
-import { WS_MESSAGES } from '../types/ws';
 import { UploadBody } from '../types/media';
+import { WS_MESSAGES } from '../types/ws';
 
 class MediaController {
   async upload(body: UploadBody) {

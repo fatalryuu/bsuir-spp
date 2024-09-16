@@ -17,6 +17,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@apollo/server": "^4.11.0",
     "axios": "^1.7.7",
     "bcrypt": "^5.1.1",
     "cookie-parser": "^1.4.6",
@@ -26,6 +27,8 @@
     "express": "^4.19.2",
     "express-async-errors": "^3.1.1",
     "firebase": "^10.13.1",
+    "graphql": "^16.9.0",
+    "http": "^0.0.1-security",
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
     "pg": "^8.12.0",

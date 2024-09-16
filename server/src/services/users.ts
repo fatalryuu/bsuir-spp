@@ -36,7 +36,7 @@ class UsersService {
     return user ? user[0] : null;
   }
 
-  async createUsers(payload: models.NewUser): Promise<Omit<User, 'password'>> {
+  async createUser(payload: models.NewUser): Promise<Omit<User, 'password'>> {
     const usersRecords = await db.insert(models.users).values(payload).returning({
       id: models.users.id,
       fullName: models.users.fullName,
