@@ -1,10 +1,9 @@
-import { Request, Response } from 'express';
-import usersService from '../services/users';
+import { io } from '..';
+import { NewUser } from '../drizzle/models';
 import authService from '../services/auth';
 import mediaService from '../services/media';
-import { NewUser } from '../drizzle/models';
+import usersService from '../services/users';
 import { PatchUserBody } from '../types/users';
-import { io } from '../services/ws';
 import { WS_MESSAGES } from '../types/ws';
 
 class UsersController {
@@ -25,7 +24,7 @@ class UsersController {
 
     const hashedPassword = await authService.hashPassword(password);
 
-    await usersService.createUsers({
+    await usersService.createUser({
       fullName,
       email,
       password: hashedPassword,
